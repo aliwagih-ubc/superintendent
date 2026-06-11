@@ -1,0 +1,76 @@
+-- Superintendent Phase 2 observability schema.
+-- Run this in the Supabase SQL editor (or via the Supabase CLI) once per project.
+
+create table if not exists cost_events (
+  id bigint generated always as identity primary key,
+  ticket_id text not null,
+  ticket_identifier text,
+  ticket_title text,
+  session_id text,
+  agent_type text not null,
+  model text not null,
+  source text not null,
+  input_tokens integer,
+  output_tokens integer,
+  cache_read_tokens integer,
+  cache_write_tokens integer,
+  cost_usd double precision,
+  developer text,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_cost_events_ticket on cost_events(ticket_id);
+create index if not exists idx_cost_events_created on cost_events(created_at);
+
+create table if not exists tickets (
+  id text primary key,
+  identifier text not null,
+  title text,
+  state text not null,
+  readiness_score integer,
+  pr_url text,
+  developer text,
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists sessions (
+  session_id text primary key,
+  ticket_id text not null,
+  agent_type text not null,
+  status text not null,
+  started_at timestamptz not null,
+  ended_at timestamptz,
+  pr_url text
+);
+
+create table if not exists daemon_heartbeat (
+  id integer primary key,
+  last_seen timestamptz not null,
+  version text not null,
+  poll_interval_seconds integer not null,
+  slots_total integer not null,
+  slots_used integer not null
+);
+
+-- Allowlist of dashboard viewers (by email).
+create table if not exists dashboard_users (
+  email text primary key
+);
+
+-- Row Level Security: the anon role reads nothing; allowlisted authenticated
+-- users read everything; the service role (daemon) bypasses RLS for writes.
+alter table cost_events enable row level security;
+alter table tickets enable row level security;
+alter table sessions enable row level security;
+alter table daemon_heartbeat enable row level security;
+alter table dashboard_users enable row level security;
+
+create policy "allowlisted read cost_events" on cost_events for select
+  using (exists (select 1 from dashboard_users d where d.email = auth.jwt() ->> 'email'));
+create policy "allowlisted read tickets" on tickets for select
+  using (exists (select 1 from dashboard_users d where d.email = auth.jwt() ->> 'email'));
+create policy "allowlisted read sessions" on sessions for select
+  using (exists (select 1 from dashboard_users d where d.email = auth.jwt() ->> 'email'));
+create policy "allowlisted read heartbeat" on daemon_heartbeat for select
+  using (exists (select 1 from dashboard_users d where d.email = auth.jwt() ->> 'email'));
+create policy "allowlisted read users" on dashboard_users for select
+  using (email = auth.jwt() ->> 'email');
