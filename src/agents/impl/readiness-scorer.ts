@@ -122,7 +122,8 @@ export class ReadinessScorerAgent extends BaseAgent<ReadinessScorerInput, Readin
         READINESS_SYSTEM_PROMPT,
         `Evaluate this ticket:\n\n${ticketDescription}`,
         READINESS_SCHEMA,
-        { maxTokens: 1024 }
+        { maxTokens: 1024 },
+        { ticketId: input.ticketId, ticketIdentifier: input.ticketIdentifier },
       );
 
       // Validate and fix recommendedAction based on score if needed

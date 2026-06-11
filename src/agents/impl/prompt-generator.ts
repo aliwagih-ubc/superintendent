@@ -97,7 +97,8 @@ export class PromptGeneratorAgent extends BaseAgent<PromptGeneratorInput, Prompt
         PROMPT_GENERATOR_SYSTEM,
         context,
         PROMPT_GENERATOR_SCHEMA,
-        { maxTokens: 4096 }
+        { maxTokens: 4096 },
+        { ticketId: input.ticketId, ticketIdentifier: input.ticketIdentifier },
       );
 
       // Enhance the generated prompt with standard instructions
