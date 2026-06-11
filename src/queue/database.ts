@@ -10,7 +10,7 @@ const logger = createChildLogger({ module: 'queue-database' });
 
 let db: Database.Database | null = null;
 
-const SCHEMA_VERSION = 8;
+const SCHEMA_VERSION = 9;
 
 const MIGRATIONS: Record<number, string[]> = {
   1: [
@@ -307,6 +307,30 @@ const MIGRATIONS: Record<number, string[]> = {
     `ALTER TABLE claude_code_queue ADD COLUMN pr_creation_retry_count INTEGER NOT NULL DEFAULT 0`,
 
     `INSERT OR REPLACE INTO schema_version (version) VALUES (8)`,
+  ],
+
+  // Migration 9: cost tracking (Phase 2)
+  9: [
+    `CREATE TABLE IF NOT EXISTS cost_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticket_id TEXT NOT NULL,
+      ticket_identifier TEXT,
+      ticket_title TEXT,
+      session_id TEXT,
+      agent_type TEXT NOT NULL,
+      model TEXT NOT NULL,
+      source TEXT NOT NULL,
+      input_tokens INTEGER,
+      output_tokens INTEGER,
+      cache_read_tokens INTEGER,
+      cache_write_tokens INTEGER,
+      cost_usd REAL,
+      developer TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_cost_events_ticket ON cost_events(ticket_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_cost_events_created ON cost_events(created_at)`,
+    `INSERT OR REPLACE INTO schema_version (version) VALUES (9)`,
   ],
 };
 
