@@ -17,6 +17,6 @@ export interface CostEventInput {
   source: CostSource;
   usage?: TokenUsage;
   // When provided (Claude Code), used directly. When absent (SDK), computed from usage + pricing.
-  costUsd?: number;
+  costUsd?: number | null;
   developer?: string;
 }

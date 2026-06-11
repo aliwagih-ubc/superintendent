@@ -4,6 +4,7 @@ import { config } from '../../config.js';
 import { createChildLogger } from '../../utils/logger.js';
 import type { Agent, AgentConfig, AgentInput, AgentOutput, ModelTier } from './types.js';
 import { AgentError, AgentTimeoutError } from './errors.js';
+import { costRecorder } from '../../cost/recorder.js';
 
 // Get model from config, with fallbacks
 function getModelForTier(tier: ModelTier): string {
@@ -55,7 +56,8 @@ export abstract class BaseAgent<TInput, TOutput> implements Agent<TInput, TOutpu
     systemPrompt: string,
     userMessage: string,
     outputSchema: Record<string, unknown>,
-    options?: { maxTokens?: number; timeoutMs?: number }
+    options?: { maxTokens?: number; timeoutMs?: number },
+    context?: { ticketId: string; ticketIdentifier: string; sessionId?: string; ticketTitle?: string; developer?: string }
   ): Promise<T> {
     const logger = this.getLogger();
     const model = this.getModel();
@@ -83,6 +85,26 @@ export abstract class BaseAgent<TInput, TOutput> implements Agent<TInput, TOutpu
       });
 
       clearTimeout(timeout);
+
+      if (context) {
+        const u = response.usage;
+        costRecorder.record({
+          ticketId: context.ticketId,
+          ticketIdentifier: context.ticketIdentifier,
+          ticketTitle: context.ticketTitle,
+          sessionId: context.sessionId,
+          developer: context.developer,
+          agentType: this.config.type,
+          model,
+          source: 'sdk',
+          usage: {
+            inputTokens: u.input_tokens,
+            outputTokens: u.output_tokens,
+            cacheReadTokens: u.cache_read_input_tokens ?? undefined,
+            cacheWriteTokens: u.cache_creation_input_tokens ?? undefined,
+          },
+        });
+      }
 
       const content = response.content[0];
       if (!content || content.type !== 'text') {
