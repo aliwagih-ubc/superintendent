@@ -34,7 +34,7 @@ const ConfigSchema = z.object({
   }),
   anthropic: z.object({
     apiKey: z.string().min(1, 'ANTHROPIC_API_KEY is required'),
-    model: z.string().default('claude-sonnet-4-5'),
+    model: z.string().default('claude-sonnet-4-6'),
   }),
   agents: z.object({
     maxConcurrent: z.number().int().min(1).max(20).default(5),
@@ -44,10 +44,10 @@ const ConfigSchema = z.object({
     maxRetries: z.number().int().min(0).default(2),
     readinessThreshold: z.number().int().min(0).max(100).default(70),
     models: z.object({
-      // Claude 4.5 models required for structured outputs beta
-      fast: z.string().default('claude-haiku-4-5-20251001'),
-      standard: z.string().default('claude-sonnet-4-5-20250929'),
-      advanced: z.string().default('claude-opus-4-5-20251101'),
+      // Claude Sonnet 4.5 or newer required for structured outputs beta
+      fast: z.string().default('claude-haiku-4-5'),
+      standard: z.string().default('claude-sonnet-4-6'),
+      advanced: z.string().default('claude-opus-4-8'),
     }),
   }),
   daemon: z.object({
@@ -99,7 +99,7 @@ export function loadConfig(): Config {
     },
     anthropic: {
       apiKey: process.env['ANTHROPIC_API_KEY'] ?? '',
-      model: process.env['ANTHROPIC_MODEL'] || 'claude-sonnet-4-5',
+      model: process.env['ANTHROPIC_MODEL'] || 'claude-sonnet-4-6',
     },
     agents: {
       maxConcurrent: parseInt(process.env['AGENTS_MAX_CONCURRENT'] || '5', 10),
@@ -109,9 +109,9 @@ export function loadConfig(): Config {
       maxRetries: parseInt(process.env['AGENTS_MAX_RETRIES'] || '2', 10),
       readinessThreshold: parseInt(process.env['AGENTS_READINESS_THRESHOLD'] || '70', 10),
       models: {
-        fast: process.env['AGENTS_MODEL_FAST'] || 'claude-haiku-4-5-20251001',
-        standard: process.env['AGENTS_MODEL_STANDARD'] || 'claude-sonnet-4-5-20250929',
-        advanced: process.env['AGENTS_MODEL_ADVANCED'] || 'claude-opus-4-5-20251101',
+        fast: process.env['AGENTS_MODEL_FAST'] || 'claude-haiku-4-5',
+        standard: process.env['AGENTS_MODEL_STANDARD'] || 'claude-sonnet-4-6',
+        advanced: process.env['AGENTS_MODEL_ADVANCED'] || 'claude-opus-4-8',
       },
     },
     daemon: {
