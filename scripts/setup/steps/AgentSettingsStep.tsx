@@ -13,13 +13,38 @@ type Props = {
 const FIELDS: Array<{
   key: keyof Pick<SetupState, 'AGENTS_MAX_CONCURRENT' | 'AGENTS_MAX_CODE_EXECUTORS' | 'AGENTS_TIMEOUT_MINUTES' | 'AGENTS_MAX_RETRIES'>;
   label: string;
+  help: string;
   hint: string;
   defaultValue: number;
 }> = [
-  { key: 'AGENTS_MAX_CONCURRENT',     label: 'Max concurrent analysis tasks',       hint: '1-50',  defaultValue: 5 },
-  { key: 'AGENTS_MAX_CODE_EXECUTORS', label: 'Max concurrent Claude Code instances', hint: '1-20',  defaultValue: 1 },
-  { key: 'AGENTS_TIMEOUT_MINUTES',    label: 'Per-agent timeout (minutes)',          hint: '1-1440', defaultValue: 60 },
-  { key: 'AGENTS_MAX_RETRIES',        label: 'Max retries on failure',               hint: '0-10',  defaultValue: 2 },
+  {
+    key: 'AGENTS_MAX_CONCURRENT',
+    label: 'Tickets refined at the same time',
+    help: 'How many tickets the AI reviews and improves at once (asking questions, writing a plan). This part is quick, so a handful is fine.',
+    hint: '1-20',
+    defaultValue: 5,
+  },
+  {
+    key: 'AGENTS_MAX_CODE_EXECUTORS',
+    label: 'Tickets coded at the same time',
+    help: 'How many tickets get turned into code at once. Each one is a full AI coder working in your repo, so keep this low (usually 1).',
+    hint: '1-10',
+    defaultValue: 1,
+  },
+  {
+    key: 'AGENTS_TIMEOUT_MINUTES',
+    label: 'Time limit per coding task (minutes)',
+    help: 'If a coding task runs longer than this, stop it. Keeps a stuck task from running forever.',
+    hint: '1-1440',
+    defaultValue: 60,
+  },
+  {
+    key: 'AGENTS_MAX_RETRIES',
+    label: 'Retries when a task fails',
+    help: 'If a task fails, how many more times to try it before giving up.',
+    hint: '0-10',
+    defaultValue: 2,
+  },
 ];
 
 export function AgentSettingsStep({ state, onUpdate, onNext, onBack }: Props) {
@@ -55,7 +80,11 @@ export function AgentSettingsStep({ state, onUpdate, onNext, onBack }: Props) {
   return (
     <Box flexDirection="column" gap={1}>
       <Text bold color="cyan">Step 5 of 7: Agent settings</Text>
-      <Text>{field.label} <Text dimColor>({field.hint})</Text></Text>
+      <Text dimColor>How much work runs at the same time. The defaults are safe. Press Enter to accept each, or type a new number.</Text>
+      <Box flexDirection="column">
+        <Text>{field.label} <Text dimColor>(allowed: {field.hint}, default: {field.defaultValue})</Text></Text>
+        <Text dimColor>{field.help}</Text>
+      </Box>
       <Box>
         <Text>Value: </Text>
         <TextInput

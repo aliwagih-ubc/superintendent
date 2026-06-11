@@ -15,7 +15,7 @@ type Props = {
 const MODELS = [
   { id: 'claude-haiku-4-5', label: 'Haiku 4.5  (fastest, cheapest)' },
   { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6 (default, best balance)' },
-  { id: 'claude-opus-4-7',  label: 'Opus 4.7   (highest quality, slower)' },
+  { id: 'claude-opus-4-8',  label: 'Opus 4.8   (highest quality, slower)' },
 ];
 
 type Phase = 'enter-key' | 'validating' | 'choose-model';

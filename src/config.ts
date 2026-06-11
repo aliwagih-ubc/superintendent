@@ -62,10 +62,12 @@ const ConfigSchema = z.object({
 export type Config = z.infer<typeof ConfigSchema>;
 export type LinearAuth = z.infer<typeof LinearAuthSchema>;
 
-function loadConfig(): Config {
-  // Determine Linear auth mode based on env vars
+export function loadConfig(): Config {
+  // Determine Linear auth mode based on env vars.
+  // A personal API key (LINEAR_PERSONAL_TOKEN, what the setup wizard writes) and
+  // the legacy LINEAR_API_KEY both authenticate in apikey mode.
   const hasOAuth = process.env['LINEAR_CLIENT_ID'] && process.env['LINEAR_CLIENT_SECRET'];
-  const hasApiKey = process.env['LINEAR_API_KEY'];
+  const apiKey = process.env['LINEAR_PERSONAL_TOKEN'] || process.env['LINEAR_API_KEY'];
 
   let linearAuth: LinearAuth;
   if (hasOAuth) {
@@ -74,14 +76,14 @@ function loadConfig(): Config {
       clientId: process.env['LINEAR_CLIENT_ID']!,
       clientSecret: process.env['LINEAR_CLIENT_SECRET']!,
     };
-  } else if (hasApiKey) {
+  } else if (apiKey) {
     linearAuth = {
       mode: 'apikey',
-      apiKey: process.env['LINEAR_API_KEY']!,
+      apiKey,
     };
   } else {
     throw new Error(
-      'Linear authentication required. Set either LINEAR_CLIENT_ID + LINEAR_CLIENT_SECRET (OAuth, recommended) or LINEAR_API_KEY (legacy).'
+      'Linear authentication required. Set LINEAR_PERSONAL_TOKEN (a Linear personal API key, what `npm run setup` writes), or LINEAR_CLIENT_ID + LINEAR_CLIENT_SECRET for OAuth.'
     );
   }
 

@@ -30,8 +30,8 @@ export const SetupStateSchema = z.strictObject({
   AGENTS_WORK_DIR: z.string().optional(),
 
   // Agent settings
-  AGENTS_MAX_CONCURRENT: z.number().int().min(1).max(50).default(5),
-  AGENTS_MAX_CODE_EXECUTORS: z.number().int().min(1).max(20).default(1),
+  AGENTS_MAX_CONCURRENT: z.number().int().min(1).max(20).default(5),
+  AGENTS_MAX_CODE_EXECUTORS: z.number().int().min(1).max(10).default(1),
   AGENTS_TIMEOUT_MINUTES: z.number().int().min(1).max(1440).default(60),
   AGENTS_MAX_RETRIES: z.number().int().min(0).max(10).default(2),
 

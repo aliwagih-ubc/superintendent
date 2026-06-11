@@ -9,6 +9,7 @@
 
 import React from 'react';
 import { render } from 'ink';
+import { spawnSync } from 'node:child_process';
 import { App } from './setup/App.js';
 
 // Check if we're in an interactive terminal
@@ -35,8 +36,21 @@ process.on('SIGINT', () => {
   process.exit(0);
 });
 
-const { waitUntilExit } = render(<App cwd={process.cwd()} />);
+let pendingAction: 'dev' | 'doctor' | null = null;
+
+const { waitUntilExit } = render(
+  <App cwd={process.cwd()} onComplete={(action) => { pendingAction = action; }} />,
+);
 
 await waitUntilExit();
 cleanup();
+
+if (pendingAction) {
+  const result = spawnSync('npm', ['run', pendingAction], {
+    stdio: 'inherit',
+    shell: process.platform === 'win32',
+  });
+  process.exit(result.status ?? 0);
+}
+
 process.exit(0);

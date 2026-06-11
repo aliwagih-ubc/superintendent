@@ -12,9 +12,9 @@ import { type SetupState, type StepId } from './lib/schema.js';
 
 const ORDER: StepId[] = ['welcome', 'linear', 'anthropic', 'repo', 'agentSettings', 'preflight', 'complete'];
 
-type Props = { cwd: string };
+type Props = { cwd: string; onComplete?: (action: 'dev' | 'doctor') => void };
 
-export function App({ cwd }: Props) {
+export function App({ cwd, onComplete }: Props) {
   const [state, setState] = useState<SetupState>(() => loadProgress(cwd));
   const [stepIndex, setStepIndex] = useState<number>(() => {
     const initial = loadProgress(cwd);
@@ -64,7 +64,7 @@ export function App({ cwd }: Props) {
       {stepIndex === 3 && <RepoStep {...stepProps} />}
       {stepIndex === 4 && <AgentSettingsStep {...stepProps} />}
       {stepIndex === 5 && <PreflightStep {...stepProps} cwd={cwd} />}
-      {stepIndex === 6 && <CompleteStep state={state} />}
+      {stepIndex === 6 && <CompleteStep state={state} onAction={onComplete} />}
     </Box>
   );
 }

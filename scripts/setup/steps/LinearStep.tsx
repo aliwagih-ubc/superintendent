@@ -65,8 +65,9 @@ export function LinearStep({ state, onUpdate, onNext, onBack }: Props) {
 
       {phase === 'enter-token' && (
         <>
-          <Text>Paste your Linear API token. Create one at:</Text>
-          <Text dimColor>https://linear.app/settings/api</Text>
+          <Text>Paste a Linear Personal API key (it starts with lin_api_).</Text>
+          <Text dimColor>In Linear: Settings → Security & access → Personal API keys → New API key.</Text>
+          <Text dimColor>Or open: https://linear.app/settings/account/security</Text>
           <Box>
             <Text>Token: </Text>
             <TextInput

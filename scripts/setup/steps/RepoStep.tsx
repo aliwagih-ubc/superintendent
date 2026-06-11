@@ -36,8 +36,10 @@ export function RepoStep({ state, onUpdate, onNext, onBack }: Props) {
   return (
     <Box flexDirection="column" gap={1}>
       <Text bold color="cyan">Step 4 of 7: Target repository</Text>
-      <Text>Absolute path to a local clone of the GitHub repo agents will work in.</Text>
-      <Text dimColor>Must be a git repo with `origin` pointing at github.com.</Text>
+      <Text>The project the AI agents will actually write code in.</Text>
+      <Text dimColor>Give the full path to a folder already on this computer (a git clone of your GitHub repo).</Text>
+      <Text dimColor>Its `origin` remote must point at github.com.</Text>
+      <Text dimColor>Example: /Users/you/code/my-repo</Text>
       <Box>
         <Text>Path: </Text>
         <TextInput defaultValue={path} onSubmit={submit} />
