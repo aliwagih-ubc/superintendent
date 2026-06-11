@@ -49,6 +49,12 @@ async function main() {
   line('Anthropic API key', checks.anthropic);
   line('Target repository', checks.repo, (checks.repo as any).githubRepo);
 
+  if (env['SUPABASE_URL']) {
+    console.log(`  \x1b[36mi\x1b[0m Supabase publishing configured (${env['SUPABASE_URL']})`);
+  } else {
+    console.log('  \x1b[2mi\x1b[0m Dashboard publisher disabled (local-only mode)');
+  }
+
   const allOk = checks.linear.ok && checks.anthropic.ok && checks.repo.ok;
   console.log('');
   if (allOk) {

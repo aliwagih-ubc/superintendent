@@ -6,6 +6,7 @@ export const StepIdSchema = z.enum([
   'anthropic',
   'repo',
   'agentSettings',
+  'supabase',
   'preflight',
   'complete',
 ]);
@@ -37,6 +38,10 @@ export const SetupStateSchema = z.strictObject({
 
   // Daemon
   DAEMON_POLL_INTERVAL_SECONDS: z.number().int().min(5).max(3600).default(30),
+
+  // Supabase (optional)
+  SUPABASE_URL: z.string().optional(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
 
   // Progress tracking
   completedSteps: z.array(StepIdSchema).default([]),
