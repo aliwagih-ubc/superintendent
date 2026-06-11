@@ -3,6 +3,7 @@ import { createChildLogger } from '../utils/logger.js';
 import { costForUsage } from './pricing.js';
 import { insertCostEvent } from './storage.js';
 import type { CostEventInput } from './types.js';
+import { enqueue, isPublishingEnabled } from '../publisher/outbox.js';
 
 const logger = createChildLogger({ module: 'cost-recorder' });
 
@@ -23,7 +24,25 @@ export class CostRecorder {
         logger.warn({ model: event.model, agentType: event.agentType }, 'No price for model; recording cost as null');
       }
 
-      insertCostEvent(getDatabase(), { ...event, costUsd });
+      const stored = { ...event, costUsd };
+      insertCostEvent(getDatabase(), stored);
+      if (isPublishingEnabled()) {
+        enqueue(getDatabase(), 'cost_events', {
+          ticket_id: stored.ticketId,
+          ticket_identifier: stored.ticketIdentifier ?? null,
+          ticket_title: stored.ticketTitle ?? null,
+          session_id: stored.sessionId ?? null,
+          agent_type: stored.agentType,
+          model: stored.model,
+          source: stored.source,
+          input_tokens: stored.usage?.inputTokens ?? null,
+          output_tokens: stored.usage?.outputTokens ?? null,
+          cache_read_tokens: stored.usage?.cacheReadTokens ?? null,
+          cache_write_tokens: stored.usage?.cacheWriteTokens ?? null,
+          cost_usd: costUsd,
+          developer: stored.developer ?? null,
+        });
+      }
     } catch (err) {
       logger.error({ err }, 'Failed to record cost event');
     }

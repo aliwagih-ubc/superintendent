@@ -1,4 +1,9 @@
 import type Database from 'better-sqlite3';
+import { config } from '../config.js';
+
+export function isPublishingEnabled(): boolean {
+  return config.supabase !== undefined;
+}
 
 export interface OutboxRow {
   id: number;
