@@ -8,13 +8,19 @@ export default function LoginPage() {
 
   const sendLink = useCallback(async () => {
     const supabase = createClient();
-    await supabase.auth.signInWithOtp({ email });
+    await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+    });
     setSent(true);
   }, [email]);
 
   const signInGoogle = useCallback(() => {
     const supabase = createClient();
-    void supabase.auth.signInWithOAuth({ provider: 'google' });
+    void supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
   }, []);
 
   return (

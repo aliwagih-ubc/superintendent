@@ -6,7 +6,9 @@ export const metadata = { title: 'Superintendent', description: 'Observability d
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      {/* suppressHydrationWarning: browser extensions (Grammarly, etc.) inject
+          attributes on <body> before React hydrates; harmless. */}
+      <body suppressHydrationWarning>{children}</body>
     </html>
   );
 }
