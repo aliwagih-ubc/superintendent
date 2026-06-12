@@ -1,12 +1,14 @@
-import type Database from 'better-sqlite3';
 import { createChildLogger } from '../utils/logger.js';
 import { config } from '../config.js';
 import { getDatabase, type LinearTaskType } from '../queue/database.js';
+import { isMentionProcessed, markMentionProcessed } from '../queue/mention-store.js';
 import { linearQueue } from '../queue/linear-queue.js';
 import { linearClient } from './client.js';
 import { parseMention, getHelpText, type SuperintendentCommand } from '../utils/mention-parser.js';
 
 const logger = createChildLogger({ module: 'mention-trigger' });
+
+export { isMentionProcessed, markMentionProcessed } from '../queue/mention-store.js';
 
 /** Map an @superintendent command to the queue task type that runs it. `help` has no task. */
 export function commandToTaskType(command: SuperintendentCommand): LinearTaskType | null {
@@ -17,20 +19,6 @@ export function commandToTaskType(command: SuperintendentCommand): LinearTaskTyp
     case 'rewrite': return 'consolidate';
     case 'help': return null;
   }
-}
-
-export function isMentionProcessed(db: Database.Database, commentId: string): boolean {
-  const row = db.prepare('SELECT 1 FROM processed_mentions WHERE comment_id = ?').get(commentId);
-  return row !== undefined;
-}
-
-export function markMentionProcessed(
-  db: Database.Database,
-  m: { commentId: string; ticketId: string; command: string },
-): void {
-  db.prepare(
-    `INSERT OR IGNORE INTO processed_mentions (comment_id, ticket_id, command) VALUES (?, ?, ?)`,
-  ).run(m.commentId, m.ticketId, m.command);
 }
 
 /**
@@ -71,7 +59,9 @@ export class MentionTrigger {
       let enqueued = 0;
 
       for (const c of comments) {
-        if (c.authorIsMe) continue;
+        // Bot-posted comments are recorded as processed when addComment runs, so they are
+        // skipped here. We cannot filter by author: with a personal token the daemon's API
+        // identity is the same user who types the commands.
         if (isMentionProcessed(db, c.commentId)) continue;
 
         const parsed = parseMention(c.body);

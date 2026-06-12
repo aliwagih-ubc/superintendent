@@ -12,6 +12,7 @@ import { createChildLogger } from '../utils/logger.js';
 import { initializeAuth, getAuth } from './auth.js';
 import { linearCache } from './cache.js';
 import { getDatabase } from '../queue/database.js';
+import { markMentionProcessed } from '../queue/mention-store.js';
 import type { TicketInfo, TicketComment, TicketUpdate, ProjectLead, CommentInfo, FileUploadResponse, AttachmentCreateResponse } from './types.js';
 import mime from 'mime-types';
 
@@ -773,6 +774,14 @@ export class LinearApiClient {
         createdAt: result.createdAt,
         updatedAt: result.updatedAt,
       });
+
+      // Record our own comment so the mention poller never treats the daemon's
+      // guidance text (which references "@superintendent work" etc.) as a command.
+      try {
+        markMentionProcessed(getDatabase(), { commentId: result.id, ticketId: issueId, command: 'bot' });
+      } catch {
+        // Database not initialized (e.g. in a unit test); skipping is safe.
+      }
     }
 
     logger.info({ issueId }, 'Added comment to ticket');
