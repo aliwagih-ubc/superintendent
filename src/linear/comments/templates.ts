@@ -1,4 +1,5 @@
 import type { TicketCostSummary } from '../../cost/storage.js';
+import type { ReviewFinding } from '../../agents/core/index.js';
 
 interface TestResults {
   passed: number;
@@ -35,6 +36,30 @@ export function reviewRequestedComment(prUrl?: string): string {
     return `Work is up for review. Pull request: ${prUrl}`;
   }
   return 'Work is up for review.';
+}
+
+export function reviewSummaryComment(input: {
+  blocking: ReviewFinding[];
+  nonBlocking: ReviewFinding[];
+  fixed: boolean;
+}): string {
+  const lines: string[] = ['## Self-review'];
+  if (input.blocking.length === 0) {
+    lines.push('No blocking issues found.');
+  } else {
+    const verb = input.fixed ? 'found and fixed' : 'found';
+    lines.push(`${input.blocking.length} blocking issue${input.blocking.length === 1 ? '' : 's'} ${verb}:`);
+    for (const f of input.blocking) {
+      lines.push(`- ${f.file ? `${f.file}: ` : ''}${f.message}`);
+    }
+  }
+  if (input.nonBlocking.length > 0) {
+    lines.push(`Non-blocking notes (${input.nonBlocking.length}):`);
+    for (const f of input.nonBlocking) {
+      lines.push(`- ${f.file ? `${f.file}: ` : ''}${f.message}`);
+    }
+  }
+  return lines.join('\n\n');
 }
 
 export function completionComment(input: CompletionInput): string {

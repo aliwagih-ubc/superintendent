@@ -5,6 +5,7 @@ import {
   planComment,
   reviewRequestedComment,
   completionComment,
+  reviewSummaryComment,
 } from '../../src/linear/comments/templates.js';
 import type { TicketCostSummary } from '../../src/cost/storage.js';
 
@@ -58,4 +59,21 @@ test('completionComment omits PR and tests lines when absent', () => {
   assert.equal(out.includes('Pull request'), false);
   assert.equal(out.includes('Tests'), false);
   assert.match(out, /\$1\.2345/);
+});
+
+test('reviewSummaryComment states blockers fixed and lists non-blocking findings', () => {
+  const out = reviewSummaryComment({
+    blocking: [{ severity: 'blocking', message: 'null deref in foo.ts' }],
+    nonBlocking: [{ severity: 'non_blocking', message: 'rename x to count' }],
+    fixed: true,
+  });
+  assert.match(out, /1 blocking/);
+  assert.match(out, /fixed/i);
+  assert.match(out, /rename x to count/);
+  assert.equal(out.includes('—'), false);
+});
+
+test('reviewSummaryComment handles a clean review', () => {
+  const out = reviewSummaryComment({ blocking: [], nonBlocking: [], fixed: false });
+  assert.match(out, /No blocking issues/i);
 });
