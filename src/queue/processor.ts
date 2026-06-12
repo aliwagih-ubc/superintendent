@@ -8,10 +8,13 @@ import { buildDualContext } from '../utils/context-builder.js';
 import { config } from '../config.js';
 import { sessionStorage } from '../sessions/index.js';
 import { savePromptToCache, formatPromptForComment } from '../utils/prompt-cache.js';
-import { planComment, reviewRequestedComment, completionComment } from '../linear/comments/templates.js';
+import { planComment, reviewRequestedComment, completionComment, reviewSummaryComment } from '../linear/comments/templates.js';
 import { costSummaryForTicket } from '../cost/storage.js';
 import { getDatabase } from './database.js';
 import { resolveProviderName } from '../agents/providers/index.js';
+import type { ProviderName } from '../agents/providers/types.js';
+import { prReviewerAgent, summarizeFindings } from '../agents/impl/pr-reviewer.js';
+import { enqueue, isPublishingEnabled } from '../publisher/outbox.js';
 import { execSync } from 'node:child_process';
 import {
   readinessScorerAgent,
@@ -1555,6 +1558,11 @@ ${prRetryPromptResult.data.prompt}`;
       }
     }
 
+    // Self-review the PR before handing off: fix blocking findings once, report the rest.
+    if (result.data.prUrl) {
+      await this.runSelfReview(task, provider, baseSha, result.data.prUrl);
+    }
+
     // Move issue to "In Review" state (not "Done" - human needs to review the PR)
     // This only happens if we have a PR URL OR if we've exhausted retries
     await linearClient.setIssueInReview(task.ticketId);
@@ -1586,6 +1594,75 @@ ${prRetryPromptResult.data.prompt}`;
   // ============================================================
   // Helper Methods
   // ============================================================
+
+  private async runSelfReview(
+    task: ClaudeQueueItem,
+    provider: ProviderName,
+    baseSha: string | undefined,
+    prUrl: string,
+  ): Promise<void> {
+    if (!config.agents.selfReviewEnabled) return;
+    if (!task.worktreePath) return;
+
+    try {
+      const diff = execSync('git diff HEAD', {
+        cwd: task.worktreePath,
+        encoding: 'utf-8',
+        maxBuffer: 20 * 1024 * 1024,
+      });
+      const ticket = await linearClient.getTicketCached(task.ticketId);
+      const review = await prReviewerAgent.execute({
+        ticketId: task.ticketId,
+        ticketIdentifier: task.ticketIdentifier,
+        data: {
+          ticketIdentifier: task.ticketIdentifier,
+          title: ticket?.title ?? task.ticketIdentifier,
+          description: ticket?.description ?? '',
+          diff,
+        },
+      });
+      if (!review.success || !review.data) return;
+
+      const summary = summarizeFindings(review.data.findings);
+      let fixed = false;
+      if (summary.hasBlockers) {
+        const fixPrompt = `A reviewer found blocking issues in your PR (${prUrl}). Fix only these, then commit and push to the same branch:\n\n${summary.blocking
+          .map((b) => `- ${b.file ? `${b.file}: ` : ''}${b.message}`)
+          .join('\n')}`;
+        const fix = await codeExecutorAgent.execute({
+          ticketId: task.ticketId,
+          ticketIdentifier: task.ticketIdentifier,
+          data: {
+            ticketIdentifier: task.ticketIdentifier,
+            prompt: fixPrompt,
+            worktreePath: task.worktreePath,
+            branchName: task.branchName ?? '',
+            baseSha,
+            provider,
+          },
+        });
+        fixed = fix.success;
+      }
+
+      await linearClient.addComment(
+        task.ticketId,
+        reviewSummaryComment({ blocking: summary.blocking, nonBlocking: summary.nonBlocking, fixed }),
+      );
+
+      if (isPublishingEnabled()) {
+        enqueue(getDatabase(), 'reviews', {
+          ticket_id: task.ticketId,
+          ticket_identifier: task.ticketIdentifier,
+          provider,
+          blocking_count: summary.blocking.length,
+          non_blocking_count: summary.nonBlocking.length,
+          fixed,
+        });
+      }
+    } catch (err) {
+      logger.warn({ ticketId: task.ticketIdentifier, err }, 'Self-review failed (non-fatal)');
+    }
+  }
 
   private async requestApproval(
     task: LinearQueueItem,
