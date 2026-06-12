@@ -88,3 +88,18 @@ create policy "allowlisted read reviews" on reviews for select
   using (exists (select 1 from dashboard_users d where d.email = auth.jwt() ->> 'email'));
 create policy "allowlisted read users" on dashboard_users for select
   using (email = auth.jwt() ->> 'email');
+
+-- Realtime: add the displayed tables to the supabase_realtime publication so the
+-- dashboard's live subscriptions fire. Idempotent (skips tables already added).
+do $$
+declare t text;
+begin
+  foreach t in array array['cost_events', 'tickets', 'sessions', 'daemon_heartbeat', 'reviews'] loop
+    if not exists (
+      select 1 from pg_publication_tables
+      where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t
+    ) then
+      execute format('alter publication supabase_realtime add table public.%I', t);
+    end if;
+  end loop;
+end $$;
