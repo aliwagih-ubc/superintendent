@@ -652,12 +652,9 @@ export class LinearApiClient {
     ticketId: string;
     ticketIdentifier: string;
     body: string;
-    authorIsMe: boolean;
     createdAt: Date;
   }>> {
     return this.withRetry(async (client) => {
-      const me = await client.viewer;
-
       const issueFilter: Record<string, unknown> = { team: { id: { eq: this.teamId } } };
       if (this.projectId) {
         issueFilter['project'] = { id: { eq: this.projectId } };
@@ -675,20 +672,17 @@ export class LinearApiClient {
         ticketId: string;
         ticketIdentifier: string;
         body: string;
-        authorIsMe: boolean;
         createdAt: Date;
       }> = [];
 
       for (const comment of result.nodes) {
         const issue = await comment.issue;
         if (!issue) continue;
-        const user = await comment.user;
         out.push({
           commentId: comment.id,
           ticketId: issue.id,
           ticketIdentifier: issue.identifier,
           body: comment.body,
-          authorIsMe: user ? user.id === me.id : false,
           createdAt: comment.createdAt,
         });
       }
