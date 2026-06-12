@@ -7,7 +7,8 @@ export type AgentType =
   | 'code-executor'
   | 'planner'
   | 'plan-consolidator'
-  | 'plan-question-extractor';
+  | 'plan-question-extractor'
+  | 'pr-reviewer';
 
 export type ModelTier = 'fast' | 'standard' | 'advanced';
 
@@ -189,3 +190,25 @@ export const CodeExecutorOutputSchema = z.object({
 });
 
 export type CodeExecutorOutput = z.infer<typeof CodeExecutorOutputSchema>;
+
+// PR Reviewer schemas
+export const ReviewFindingSchema = z.object({
+  severity: z.enum(['blocking', 'non_blocking']),
+  file: z.string().optional(),
+  message: z.string(),
+});
+
+export const PrReviewerInputSchema = z.object({
+  ticketIdentifier: z.string(),
+  title: z.string(),
+  description: z.string(),
+  diff: z.string(),
+});
+
+export const PrReviewerOutputSchema = z.object({
+  findings: z.array(ReviewFindingSchema),
+});
+
+export type ReviewFinding = z.infer<typeof ReviewFindingSchema>;
+export type PrReviewerInput = z.infer<typeof PrReviewerInputSchema>;
+export type PrReviewerOutput = z.infer<typeof PrReviewerOutputSchema>;
