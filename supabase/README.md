@@ -28,7 +28,7 @@ Superintendent can publish cost, ticket, session, and heartbeat data to a Supaba
 
    The daemon will detect these on next start and begin publishing.
 
-6. Pass the project URL and anon key to the dashboard (Plan 3). The dashboard reads data as an allowlisted authenticated user via Supabase Auth.
+6. Pass the project URL and anon key to the dashboard. Set them as `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` (see `../dashboard/README.md`). The dashboard reads data as an allowlisted authenticated user via Supabase Auth, so enable the email and Google providers in Authentication, Providers.
 
 ## Notes
 
