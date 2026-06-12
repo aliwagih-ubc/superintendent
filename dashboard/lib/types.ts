@@ -45,3 +45,14 @@ export interface Heartbeat {
   slots_total: number;
   slots_used: number;
 }
+
+export interface Review {
+  id: number;
+  ticket_id: string;
+  ticket_identifier: string | null;
+  provider: string;
+  blocking_count: number;
+  non_blocking_count: number;
+  fixed: boolean;
+  created_at: string;
+}

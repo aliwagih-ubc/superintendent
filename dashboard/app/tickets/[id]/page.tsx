@@ -3,14 +3,15 @@ import { useParams } from 'next/navigation';
 import Shell from '@/components/Shell';
 import { useLiveQuery } from '@/lib/useLiveQuery';
 import { sumBy } from '@/lib/aggregate';
-import type { Ticket, Session, CostEvent } from '@/lib/types';
+import type { Ticket, Session, CostEvent, Review } from '@/lib/types';
 
-const TABLES = ['tickets', 'sessions', 'cost_events'];
+const TABLES = ['tickets', 'sessions', 'cost_events', 'reviews'];
 
 interface DetailData {
   ticket: Ticket | null;
   sessions: Session[];
   costEvents: CostEvent[];
+  reviews: Review[];
 }
 
 function usd(n: number): string {
@@ -26,15 +27,17 @@ export default function TicketDetailPage() {
   const id = params.id;
 
   const { data, loading } = useLiveQuery<DetailData>(async (sb) => {
-    const [ticket, sessions, costEvents] = await Promise.all([
+    const [ticket, sessions, costEvents, reviews] = await Promise.all([
       sb.from('tickets').select('*').eq('id', id).maybeSingle(),
       sb.from('sessions').select('*').eq('ticket_id', id).order('started_at', { ascending: false }),
       sb.from('cost_events').select('*').eq('ticket_id', id).order('created_at', { ascending: false }),
+      sb.from('reviews').select('*').eq('ticket_id', id).order('created_at', { ascending: false }),
     ]);
     return {
       ticket: (ticket.data as Ticket | null) ?? null,
       sessions: (sessions.data as Session[]) ?? [],
       costEvents: (costEvents.data as CostEvent[]) ?? [],
+      reviews: (reviews.data as Review[]) ?? [],
     };
   }, TABLES);
 
@@ -58,6 +61,7 @@ export default function TicketDetailPage() {
   const sessions = data?.sessions ?? [];
   const costEvents = data?.costEvents ?? [];
   const total = sumBy(costEvents);
+  const latestReview = data?.reviews?.[0] ?? null;
 
   return (
     <Shell>
@@ -105,6 +109,23 @@ export default function TicketDetailPage() {
             </table>
           )}
         </div>
+
+        {latestReview ? (
+          <div className="flex flex-col gap-2">
+            <div className="text-[var(--color-muted)] text-xs uppercase tracking-wider">Self-review</div>
+            <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded p-4 text-sm flex flex-col gap-1">
+              <div>Provider: {latestReview.provider}</div>
+              <div>{latestReview.blocking_count} blocking, {latestReview.non_blocking_count} non-blocking</div>
+              <div className={latestReview.fixed ? 'text-[var(--color-good)]' : 'text-[var(--color-muted)]'}>
+                {latestReview.blocking_count === 0
+                  ? 'No blockers found.'
+                  : latestReview.fixed
+                    ? 'Blockers fixed automatically.'
+                    : 'Blockers not auto-fixed.'}
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         <div className="flex flex-col gap-2">
           <div className="text-[var(--color-muted)] text-xs uppercase tracking-wider">Cost events</div>
