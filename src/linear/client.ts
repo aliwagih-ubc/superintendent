@@ -642,6 +642,61 @@ export class LinearApiClient {
   }
 
   /**
+   * Fetch comments created since `sinceIso` in this team whose body mentions superintendent.
+   * One cheap, recency-filtered query (independent of ticket count) so the mention poller
+   * can run on a short interval. Returns the data the trigger needs per comment.
+   */
+  async getRecentMentionComments(sinceIso: string): Promise<Array<{
+    commentId: string;
+    ticketId: string;
+    ticketIdentifier: string;
+    body: string;
+    authorIsMe: boolean;
+    createdAt: Date;
+  }>> {
+    return this.withRetry(async (client) => {
+      const me = await client.viewer;
+
+      const issueFilter: Record<string, unknown> = { team: { id: { eq: this.teamId } } };
+      if (this.projectId) {
+        issueFilter['project'] = { id: { eq: this.projectId } };
+      }
+      const filter: Record<string, unknown> = {
+        createdAt: { gt: sinceIso },
+        body: { containsIgnoreCase: 'superintendent' },
+        issue: issueFilter,
+      };
+
+      const result = await client.comments({ filter, first: 50 });
+
+      const out: Array<{
+        commentId: string;
+        ticketId: string;
+        ticketIdentifier: string;
+        body: string;
+        authorIsMe: boolean;
+        createdAt: Date;
+      }> = [];
+
+      for (const comment of result.nodes) {
+        const issue = await comment.issue;
+        if (!issue) continue;
+        const user = await comment.user;
+        out.push({
+          commentId: comment.id,
+          ticketId: issue.id,
+          ticketIdentifier: issue.identifier,
+          body: comment.body,
+          authorIsMe: user ? user.id === me.id : false,
+          createdAt: comment.createdAt,
+        });
+      }
+
+      return out;
+    });
+  }
+
+  /**
    * Get attachments for an issue
    * Fetches attachments including images/screenshots that may provide visual context
    */

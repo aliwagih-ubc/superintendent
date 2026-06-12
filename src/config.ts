@@ -54,6 +54,8 @@ const ConfigSchema = z.object({
   }),
   daemon: z.object({
     pollIntervalSeconds: z.number().int().min(5).default(30),
+    commentPollSeconds: z.number().int().min(1).default(5),
+    mentionLookbackSeconds: z.number().int().min(30).default(600),
   }),
   supabase: z.object({
     url: z.string().url(),
@@ -124,6 +126,8 @@ export function loadConfig(): Config {
     },
     daemon: {
       pollIntervalSeconds: parseInt(process.env['DAEMON_POLL_INTERVAL_SECONDS'] || '30', 10),
+      commentPollSeconds: parseInt(process.env['COMMENT_POLL_SECONDS'] || '5', 10),
+      mentionLookbackSeconds: parseInt(process.env['MENTION_LOOKBACK_SECONDS'] || '600', 10),
     },
     supabase: (process.env['SUPABASE_URL'] && process.env['SUPABASE_SERVICE_ROLE_KEY'])
       ? { url: process.env['SUPABASE_URL'], serviceRoleKey: process.env['SUPABASE_SERVICE_ROLE_KEY'] }

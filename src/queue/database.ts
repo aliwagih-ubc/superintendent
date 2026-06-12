@@ -10,7 +10,7 @@ const logger = createChildLogger({ module: 'queue-database' });
 
 let db: Database.Database | null = null;
 
-const SCHEMA_VERSION = 10;
+const SCHEMA_VERSION = 11;
 
 const MIGRATIONS: Record<number, string[]> = {
   1: [
@@ -346,6 +346,17 @@ const MIGRATIONS: Record<number, string[]> = {
     )`,
     `CREATE INDEX IF NOT EXISTS idx_outbox_status ON sync_outbox(status, id)`,
     `INSERT OR REPLACE INTO schema_version (version) VALUES (10)`,
+  ],
+
+  // Migration 11: processed mention comments (comment-poller trigger idempotency)
+  11: [
+    `CREATE TABLE IF NOT EXISTS processed_mentions (
+      comment_id TEXT PRIMARY KEY,
+      ticket_id TEXT NOT NULL,
+      command TEXT NOT NULL,
+      processed_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`,
+    `INSERT OR REPLACE INTO schema_version (version) VALUES (11)`,
   ],
 };
 

@@ -8,6 +8,7 @@ import { queueManager, queueProcessor, queueScheduler } from './queue/index.js';
 import { codeExecutorAgent, plannerAgent } from './agents/impl/index.js';
 import { claudeQueue } from './queue/claude-queue.js';
 import { startPublisher, stopPublisher } from './publisher/index.js';
+import { mentionTrigger } from './linear/mention-trigger.js';
 
 async function checkOAuthAuthorization(): Promise<void> {
   if (config.linear.auth.mode !== 'oauth') {
@@ -142,6 +143,7 @@ async function main() {
 
     // Stop queue processing
     stopPublisher();
+    mentionTrigger.stop();
     queueScheduler.stop();
     queueProcessor.stop();
     queueManager.shutdown();
@@ -191,6 +193,11 @@ async function main() {
   } else {
     queueScheduler.start();
   }
+
+  // Start the comment-mention poller: the trigger that turns @superintendent comments
+  // into queued work. Polls Linear every COMMENT_POLL_SECONDS (default 5s).
+  mentionTrigger.start(config.daemon.commentPollSeconds * 1000);
+  logger.info({ everySeconds: config.daemon.commentPollSeconds }, 'Mention trigger active');
 
   logger.info('Daemon running with task queue system');
 
