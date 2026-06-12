@@ -11,6 +11,8 @@ import { savePromptToCache, formatPromptForComment } from '../utils/prompt-cache
 import { planComment, reviewRequestedComment, completionComment } from '../linear/comments/templates.js';
 import { costSummaryForTicket } from '../cost/storage.js';
 import { getDatabase } from './database.js';
+import { resolveProviderName } from '../agents/providers/index.js';
+import { execSync } from 'node:child_process';
 import {
   readinessScorerAgent,
   ticketRefinerAgent,
@@ -1312,6 +1314,16 @@ ${ticket.description || ''}`;
       });
     }
 
+    const execTicket = await linearClient.getTicketCached(task.ticketId);
+    const labelNames = (execTicket?.labels ?? []).map((l) => l.name);
+    const provider = resolveProviderName(labelNames, config.agents.codingProvider);
+    let baseSha: string | undefined;
+    try {
+      baseSha = execSync('git rev-parse HEAD', { cwd: task.worktreePath, encoding: 'utf-8' }).trim();
+    } catch {
+      baseSha = undefined;
+    }
+
     const result = await codeExecutorAgent.execute(
       {
         ticketId: task.ticketId,
@@ -1321,6 +1333,8 @@ ${ticket.description || ''}`;
           prompt: task.prompt,
           worktreePath: task.worktreePath,
           branchName: task.branchName,
+          baseSha,
+          provider,
         },
       },
       {

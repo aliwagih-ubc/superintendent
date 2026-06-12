@@ -167,6 +167,8 @@ export const CodeExecutorInputSchema = z.object({
   prompt: z.string(),
   worktreePath: z.string(),
   branchName: z.string(),
+  baseSha: z.string().optional(),
+  provider: z.enum(['claude-code', 'gemini', 'codex']).optional(),
 });
 
 export type CodeExecutorInput = z.infer<typeof CodeExecutorInputSchema>;

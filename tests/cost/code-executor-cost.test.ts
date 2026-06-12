@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { extractCostUsd } from '../../src/agents/impl/code-executor.js';
+import { extractCostUsd } from '../../src/agents/providers/claude-code.js';
 
 test('extractCostUsd reads total_cost_usd from a Claude Code result', () => {
   assert.equal(extractCostUsd({ result: 'done', total_cost_usd: 0.37, is_error: false }), 0.37);

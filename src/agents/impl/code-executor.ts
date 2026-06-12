@@ -3,6 +3,10 @@ import fs from 'node:fs';
 import { config } from '../../config.js';
 import { createChildLogger } from '../../utils/logger.js';
 import { costRecorder } from '../../cost/recorder.js';
+import { getProvider } from '../providers/index.js';
+import { claudeCodeProvider } from '../providers/claude-code.js';
+import { filesChangedSince } from '../providers/git-files.js';
+import type { CodingProvider, ProviderName } from '../providers/types.js';
 
 // Find the claude binary path at startup
 function findClaudePath(): string {
@@ -46,11 +50,6 @@ export interface ExecutionContext {
   onSessionIdCaptured?: (sessionId: string) => void;
 }
 
-export function extractCostUsd(parsed: Record<string, unknown>): number | undefined {
-  const v = parsed['total_cost_usd'];
-  return typeof v === 'number' ? v : undefined;
-}
-
 export class CodeExecutorAgent implements Agent<CodeExecutorInput, CodeExecutorOutput> {
   readonly config: AgentConfig = {
     type: 'code-executor',
@@ -80,22 +79,24 @@ export class CodeExecutorAgent implements Agent<CodeExecutorInput, CodeExecutorO
   ): Promise<AgentOutput<CodeExecutorOutput>> {
     const startTime = Date.now();
     const { ticketIdentifier, prompt, worktreePath, branchName } = input.data;
+    const providerName: ProviderName = input.data.provider ?? config.agents.codingProvider;
+    const provider = getProvider(providerName);
 
     logger.info(
-      { ticketId: ticketIdentifier, worktree: worktreePath, branch: branchName },
-      'Starting Claude Code execution'
+      { ticketId: ticketIdentifier, worktree: worktreePath, branch: branchName, provider: providerName },
+      'Starting code execution'
     );
 
     try {
-      const result = await this.runClaudeCode(ticketIdentifier, prompt, worktreePath, context);
+      const result = await this.runProvider(provider, input.data.baseSha, ticketIdentifier, prompt, worktreePath, context);
       const durationMs = Date.now() - startTime;
 
       if (result.costUsd !== undefined) {
         costRecorder.record({
           ticketId: input.ticketId,
           ticketIdentifier: input.ticketIdentifier,
-          agentType: 'code-executor',
-          model: 'claude-code',
+          agentType: providerName,
+          model: providerName,
           source: 'claude_code',
           costUsd: result.costUsd,
         });
@@ -105,7 +106,7 @@ export class CodeExecutorAgent implements Agent<CodeExecutorInput, CodeExecutorO
         success: result.success,
         data: result,
         metadata: {
-          modelUsed: 'claude-code-cli',
+          modelUsed: providerName,
           durationMs,
           cached: false,
         },
@@ -118,7 +119,7 @@ export class CodeExecutorAgent implements Agent<CodeExecutorInput, CodeExecutorO
           success: false,
           error: error.message,
           metadata: {
-            modelUsed: 'claude-code-cli',
+            modelUsed: providerName,
             durationMs,
             cached: false,
           },
@@ -129,7 +130,7 @@ export class CodeExecutorAgent implements Agent<CodeExecutorInput, CodeExecutorO
         success: false,
         error: error instanceof Error ? error.message : String(error),
         metadata: {
-          modelUsed: 'claude-code-cli',
+          modelUsed: providerName,
           durationMs,
           cached: false,
         },
@@ -137,7 +138,9 @@ export class CodeExecutorAgent implements Agent<CodeExecutorInput, CodeExecutorO
     }
   }
 
-  private async runClaudeCode(
+  private async runProvider(
+    provider: CodingProvider,
+    baseSha: string | undefined,
     ticketIdentifier: string,
     prompt: string,
     worktreePath: string,
@@ -148,18 +151,7 @@ export class CodeExecutorAgent implements Agent<CodeExecutorInput, CodeExecutorO
       const timeoutMs = this.config.timeoutMs!;
       let sessionIdCaptured = false;
 
-      // Build args for non-interactive/headless mode
-      // See: https://github.com/ruvnet/claude-flow/wiki/Non-Interactive-Mode
-      // Note: stream-json requires --verbose flag
-      const baseArgs = [
-        '-p', prompt,                      // Print mode with prompt
-        '--dangerously-skip-permissions',  // Auto-approve all tool usage
-        '--output-format', 'stream-json',  // Streaming JSON for real-time output
-        '--verbose',                       // Required for stream-json
-      ];
-      const args = USE_NPX
-        ? ['@anthropic-ai/claude-code', ...baseArgs]
-        : baseArgs;
+      const spawnSpec = provider.buildSpawn(prompt, worktreePath);
 
       // Verify worktree exists before spawning
       if (!fs.existsSync(worktreePath)) {
@@ -173,19 +165,18 @@ export class CodeExecutorAgent implements Agent<CodeExecutorInput, CodeExecutorO
       }
 
       logger.info(
-        { ticketId: ticketIdentifier, claudePath: CLAUDE_PATH, useNpx: USE_NPX, cwd: worktreePath, promptLength: prompt.length },
-        'Spawning Claude Code'
+        { ticketId: ticketIdentifier, provider: provider.name, command: spawnSpec.command, cwd: worktreePath, promptLength: prompt.length },
+        'Spawning coding provider'
       );
 
       const childProcess = spawn(
-        CLAUDE_PATH,
-        args,
+        spawnSpec.command,
+        spawnSpec.args,
         {
           cwd: worktreePath,
           env: {
             ...process.env,
-            // Explicit non-interactive mode - prevents any TTY/interactive prompts
-            CLAUDE_FLOW_NON_INTERACTIVE: 'true',
+            ...spawnSpec.env,
           },
           stdio: ['ignore', 'pipe', 'pipe'], // No stdin needed - prompt is in args
         }
@@ -235,8 +226,22 @@ export class CodeExecutorAgent implements Agent<CodeExecutorInput, CodeExecutorO
         this.clearJsonBuffer(processId);
         this.capturedSessionIds.delete(processId);
 
-        const result = this.parseOutput(output, code, ticketIdentifier);
-        resolve(result);
+        const parsed = provider.parseOutput(output, code);
+        const filesModified = baseSha ? filesChangedSince(worktreePath, baseSha) : [];
+        logger.info(
+          { ticketId: ticketIdentifier, provider: provider.name, success: parsed.success, prUrl: parsed.prUrl, exitCode: code },
+          'Coding provider execution completed'
+        );
+        resolve({
+          success: parsed.success,
+          prUrl: parsed.prUrl,
+          commitSha: parsed.commitSha,
+          filesModified,
+          testResults: parsed.testResults,
+          error: parsed.error,
+          output,
+          costUsd: parsed.costUsd,
+        });
       });
 
       childProcess.on('error', (error: Error) => {
@@ -253,147 +258,6 @@ export class CodeExecutorAgent implements Agent<CodeExecutorInput, CodeExecutorO
         ));
       });
     });
-  }
-
-  private parseOutput(output: string, exitCode: number | null, ticketIdentifier: string): CodeExecutorOutput {
-    // Try to parse JSON output first (preferred)
-    const jsonResult = this.tryParseJsonOutput(output);
-    if (jsonResult) {
-      logger.info(
-        { ticketId: ticketIdentifier, success: jsonResult.success, exitCode, hasJsonOutput: true },
-        'Claude Code execution completed (JSON parsed)'
-      );
-      return jsonResult;
-    }
-
-    // Fallback to text parsing if JSON parsing fails
-    logger.debug({ ticketId: ticketIdentifier }, 'Falling back to text output parsing');
-
-    // Extract PR URL if present
-    const prUrlMatch = output.match(/https:\/\/github\.com\/[^\s]+\/pull\/\d+/);
-    const prUrl = prUrlMatch?.[0];
-
-    // Extract commit SHA if present
-    const commitMatch = output.match(/commit ([a-f0-9]{40})/i);
-    const commitSha = commitMatch?.[1];
-
-    // Detect task completion status
-    const taskFailed = output.includes('TASK_FAILED');
-
-    // Try to extract files modified (common git output patterns)
-    const filesModified: string[] = [];
-    const fileMatches = output.matchAll(/(?:create|modify|delete|rename)(?:d)?\s+(?:mode \d+ )?(.+?)(?:\s|$)/gi);
-    for (const match of fileMatches) {
-      if (match[1]) {
-        filesModified.push(match[1].trim());
-      }
-    }
-
-    // Determine success
-    let success = false;
-    let error: string | undefined;
-
-    if (exitCode === 0) {
-      if (taskFailed) {
-        success = false;
-        const failedMatch = output.match(/TASK_FAILED[:\s]*(.+?)(?:\n|$)/);
-        error = failedMatch?.[1] || 'Task marked as failed by agent';
-      } else {
-        success = true;
-      }
-    } else {
-      success = false;
-      error = `Process exited with code ${exitCode}`;
-    }
-
-    logger.info(
-      { ticketId: ticketIdentifier, success, prUrl, exitCode, hasJsonOutput: false },
-      'Claude Code execution completed (text parsed)'
-    );
-
-    return {
-      success,
-      prUrl,
-      commitSha,
-      filesModified,
-      error,
-      output,
-    };
-  }
-
-  /**
-   * Try to parse JSON output from Claude Code's --output-format json mode
-   */
-  private tryParseJsonOutput(output: string): CodeExecutorOutput | null {
-    try {
-      // Claude Code JSON output may have multiple JSON objects (one per line in stream mode)
-      // or a single complete JSON object. Try to find and parse the final/complete one.
-      const lines = output.trim().split('\n');
-
-      // Try parsing from the end (most complete result is usually last)
-      for (let i = lines.length - 1; i >= 0; i--) {
-        const line = lines[i]?.trim();
-        if (line?.startsWith('{')) {
-          try {
-            const parsed = JSON.parse(line) as Record<string, unknown>;
-
-            // Check if this looks like a Claude Code result
-            if ('result' in parsed || 'error' in parsed || 'sessionId' in parsed) {
-              return this.extractFromJsonResult(parsed, output);
-            }
-          } catch {
-            // Not valid JSON, continue searching
-          }
-        }
-      }
-
-      // Also try parsing the entire output as a single JSON object
-      if (output.trim().startsWith('{')) {
-        const parsed = JSON.parse(output.trim()) as Record<string, unknown>;
-        return this.extractFromJsonResult(parsed, output);
-      }
-
-      return null;
-    } catch {
-      return null;
-    }
-  }
-
-  /**
-   * Extract CodeExecutorOutput from parsed JSON result
-   */
-  private extractFromJsonResult(parsed: Record<string, unknown>, rawOutput: string): CodeExecutorOutput {
-    // Extract common fields from Claude Code JSON output
-    const result = parsed.result as string | undefined;
-    const errorMsg = parsed.error as string | undefined;
-    const isError = parsed.is_error as boolean | undefined;
-
-    // Look for PR URL in the result text or in structured fields
-    let prUrl: string | undefined;
-    const prUrlMatch = (result || rawOutput).match(/https:\/\/github\.com\/[^\s"]+\/pull\/\d+/);
-    if (prUrlMatch) {
-      prUrl = prUrlMatch[0];
-    }
-
-    // Look for commit SHA
-    let commitSha: string | undefined;
-    const commitMatch = (result || rawOutput).match(/commit ([a-f0-9]{40})/i);
-    if (commitMatch) {
-      commitSha = commitMatch[1];
-    }
-
-    // Determine success
-    const success = !isError && !errorMsg && !result?.includes('TASK_FAILED');
-
-    return {
-      success,
-      prUrl,
-      commitSha,
-      filesModified: [],
-      error: errorMsg || (isError ? 'Task failed' : undefined),
-      output: rawOutput,
-      costUsd: extractCostUsd(parsed),
-    };
   }
 
   private killProcess(processId: string): void {
@@ -596,8 +460,17 @@ export class CodeExecutorAgent implements Agent<CodeExecutorInput, CodeExecutorO
         this.runningProcesses.delete(processId);
         this.clearJsonBuffer(processId);
 
-        const result = this.parseOutput(output, code, session.ticketIdentifier);
-        resolve(result);
+        const parsed = claudeCodeProvider.parseOutput(output, code);
+        resolve({
+          success: parsed.success,
+          prUrl: parsed.prUrl,
+          commitSha: parsed.commitSha,
+          filesModified: [],
+          testResults: parsed.testResults,
+          error: parsed.error,
+          output,
+          costUsd: parsed.costUsd,
+        });
       });
 
       childProcess.on('error', (error: Error) => {
