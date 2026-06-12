@@ -3,12 +3,9 @@ import { Box, Text, useStdout } from 'ink';
 import { Spinner } from '@inkjs/ui';
 
 const LOGO = `
-  ████████╗ █████╗ ███████╗██╗  ██╗
-  ╚══██╔══╝██╔══██╗██╔════╝██║ ██╔╝
-     ██║   ███████║███████╗█████╔╝
-     ██║   ██╔══██║╚════██║██╔═██╗
-     ██║   ██║  ██║███████║██║  ██╗
-     ╚═╝   ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝
+  ╔═════════════════════════════════╗
+  ║   S U P E R I N T E N D E N T   ║
+  ╚═════════════════════════════════╝
 `;
 
 interface SplashScreenProps {
@@ -33,7 +30,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ initStatus }) => {
         <Text color="gray">═══════════════════════════════════</Text>
       </Box>
       <Box marginTop={1} flexDirection="column" alignItems="center">
-        <Text bold color="white">A G E N T</Text>
+        <Text bold color="white">AI PROJECT MANAGER FOR CODING AGENTS</Text>
         <Text dimColor>v0.1.0</Text>
       </Box>
       <Box marginTop={2}>
