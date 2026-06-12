@@ -1351,6 +1351,12 @@ ${ticket.description || ''}`;
       }
     );
 
+    // Self-review needs the worktree (git diff plus the blocker fix pass runs in it),
+    // so do it before the worktree is cleaned up.
+    if (result.success && result.data?.success && result.data.prUrl) {
+      await this.runSelfReview(task, provider, baseSha, result.data.prUrl);
+    }
+
     // Clean up worktree
     await worktreeManager.remove(task.ticketIdentifier);
 
@@ -1556,11 +1562,6 @@ ${prRetryPromptResult.data.prompt}`;
 
         // Fall through to normal completion (without PR URL)
       }
-    }
-
-    // Self-review the PR before handing off: fix blocking findings once, report the rest.
-    if (result.data.prUrl) {
-      await this.runSelfReview(task, provider, baseSha, result.data.prUrl);
     }
 
     // Move issue to "In Review" state (not "Done" - human needs to review the PR)
