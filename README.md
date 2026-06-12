@@ -44,6 +44,29 @@ The wizard walks you through Linear, Anthropic, your target repo, and agent sett
 - **Concurrent agents.** Configurable; Git worktree isolation per agent.
 - **PRs.** Auto-merge or human review (configurable).
 
+## Triggering work in Linear
+
+Superintendent is mention-triggered, not auto-pilot. Creating, assigning, or moving a ticket does nothing on its own. The daemon polls Linear every 30s and acts only when you post a command as a comment on the ticket.
+
+**Where to type it:** in the ticket's plain Linear comment box, as plain text. Two things to watch:
+
+- Do not pick a user from Linear's `@` autocomplete. The daemon matches the literal text `@superintendent`, so let it stay as text.
+- If the ticket is synced to GitHub, use the **Linear** comment box, not the "Post to GitHub" box. The daemon only reads Linear comments.
+
+**Commands:**
+
+| Comment in the ticket   | What it does                                                              |
+| ----------------------- | ------------------------------------------------------------------------ |
+| `@superintendent plan`  | Planning mode: gathers requirements through Q&A before any code is written. |
+| `@superintendent clarify` | Asks clarifying questions to sharpen a vague ticket.                    |
+| `@superintendent rewrite` | Consolidates the comment discussion into an updated ticket description.  |
+| `@superintendent work`  | Implements the ticket: runs the coding agent, opens a PR, then self-reviews. |
+| `@superintendent`       | Posts the list of commands (also shown for any unknown command).          |
+
+After you comment, the next poll (within ~30s) picks it up. The ticket then appears on the dashboard **Now** page and Superintendent starts commenting on the ticket.
+
+**Choosing the coding agent (provider).** `@superintendent work` runs the default provider set by `CODING_PROVIDER` in `.env` (`claude-code`, `gemini`, or `codex`). To use a different one for a single ticket, add a label named exactly `provider:gemini`, `provider:codex`, or `provider:claude-code` to the ticket **before** you comment `@superintendent work`. The label wins over the default; an unrecognized `provider:` label is ignored and the default is used. The provider that ran is shown on the dashboard ticket detail and recorded on the cost rows. Each provider's CLI must be installed and authenticated on the daemon host (`npm run doctor` reports whether the configured default's CLI is on PATH).
+
 ## Configuration
 
 | Variable                             | Required | Default              | Description                                                          |
