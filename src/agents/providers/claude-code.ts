@@ -14,7 +14,7 @@ function findClaudePath(): string {
 const CLAUDE_PATH = findClaudePath();
 const USE_NPX = CLAUDE_PATH === 'npx';
 
-function extractCostUsd(parsed: Record<string, unknown>): number | undefined {
+export function extractCostUsd(parsed: Record<string, unknown>): number | undefined {
   const v = parsed['total_cost_usd'];
   return typeof v === 'number' ? v : undefined;
 }
