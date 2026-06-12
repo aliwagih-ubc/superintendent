@@ -119,9 +119,9 @@ bin/super.js              # `super` CLI dispatcher
 
 ## Roadmap
 
-- **Phase 1 ✓.** Foundation (you are here)
-- **Phase 2.** Observability: web dashboard, cost & usage tracking, richer Linear comments
-- **Phase 3.** Agent depth: multi-provider executors, PR self-review loop
+- **Phase 1 ✓.** Foundation: rebrand, polling-only architecture, setup wizard, doctor.
+- **Phase 2 ✓.** Observability: cost & usage tracking, Supabase publisher, hosted web dashboard, richer Linear comments.
+- **Phase 3 ✓.** Agent depth: multi-provider executors (Claude Code, Gemini, Codex) with per-ticket selection, PR self-review loop.
 
 ## License
 
