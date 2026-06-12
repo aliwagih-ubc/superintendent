@@ -8,6 +8,9 @@ import { buildDualContext } from '../utils/context-builder.js';
 import { config } from '../config.js';
 import { sessionStorage } from '../sessions/index.js';
 import { savePromptToCache, formatPromptForComment } from '../utils/prompt-cache.js';
+import { planComment, reviewRequestedComment, completionComment } from '../linear/comments/templates.js';
+import { costSummaryForTicket } from '../cost/storage.js';
+import { getDatabase } from './database.js';
 import {
   readinessScorerAgent,
   ticketRefinerAgent,
@@ -1124,6 +1127,9 @@ ${ticket.description || ''}`;
         { ticketId: task.ticketIdentifier, planLength: planContent.length },
         'Updated ticket description with implementation plan'
       );
+
+      // Also post the plan as a comment so the ticket carries the full record.
+      await linearClient.addComment(task.ticketId, planComment(planContent));
     }
 
     // Post questions as individual comments WITH checkboxes (matching clarify flow format)
@@ -1547,11 +1553,18 @@ ${prRetryPromptResult.data.prompt}`;
       agentSessions.delete(task.ticketId);
     }
 
-    let comment = `Work completed successfully!`;
-    if (result.data.prUrl) {
-      comment += `\n\n**Pull Request**: ${result.data.prUrl}`;
-    }
-    await linearClient.addComment(task.ticketId, comment);
+    await linearClient.addComment(task.ticketId, reviewRequestedComment(result.data.prUrl));
+
+    const cost = costSummaryForTicket(getDatabase(), task.ticketId);
+    await linearClient.addComment(
+      task.ticketId,
+      completionComment({
+        prUrl: result.data.prUrl,
+        filesModified: result.data.filesModified,
+        testResults: result.data.testResults,
+        cost,
+      }),
+    );
 
     this.callbacks.onStateChange?.(task.ticketId, 'completed', { prUrl: result.data.prUrl });
   }
