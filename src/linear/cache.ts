@@ -18,12 +18,12 @@ export class LinearCache {
       INSERT INTO linear_tickets_cache (
         id, identifier, title, description, priority,
         state_id, state_name, state_type,
-        assignee_id, assignee_name, labels, project_id,
+        assignee_id, assignee_name, creator_id, creator_name, labels, project_id,
         created_at, updated_at, cached_at, url
       ) VALUES (
         @id, @identifier, @title, @description, @priority,
         @stateId, @stateName, @stateType,
-        @assigneeId, @assigneeName, @labels, @projectId,
+        @assigneeId, @assigneeName, @creatorId, @creatorName, @labels, @projectId,
         @createdAt, @updatedAt, datetime('now'), @url
       )
       ON CONFLICT(id) DO UPDATE SET
@@ -36,6 +36,8 @@ export class LinearCache {
         state_type = @stateType,
         assignee_id = @assigneeId,
         assignee_name = @assigneeName,
+        creator_id = @creatorId,
+        creator_name = @creatorName,
         labels = @labels,
         project_id = @projectId,
         updated_at = @updatedAt,
@@ -54,6 +56,8 @@ export class LinearCache {
       stateType: ticket.state?.type || null,
       assigneeId: ticket.assignee?.id || null,
       assigneeName: ticket.assignee?.name || null,
+      creatorId: ticket.creator?.id || null,
+      creatorName: ticket.creator?.name || null,
       labels: JSON.stringify(ticket.labels || []),
       projectId: null, // TicketInfo doesn't have projectId yet
       createdAt: ticket.createdAt instanceof Date ? ticket.createdAt.toISOString() : ticket.createdAt,
@@ -402,6 +406,10 @@ export class LinearCache {
         id: row.assignee_id,
         name: row.assignee_name || '',
       } : null,
+      creator: row.creator_id ? {
+        id: row.creator_id,
+        name: row.creator_name || '',
+      } : null,
       labels: row.labels ? JSON.parse(row.labels) : [],
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at),
@@ -435,6 +443,8 @@ interface CachedTicketRow {
   state_type: string | null;
   assignee_id: string | null;
   assignee_name: string | null;
+  creator_id: string | null;
+  creator_name: string | null;
   labels: string | null;
   project_id: string | null;
   created_at: string;

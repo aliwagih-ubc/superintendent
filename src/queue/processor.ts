@@ -652,7 +652,9 @@ export class QueueProcessor {
    * This generates the prompt and immediately starts Claude Code.
    */
   private async handleExecuteDirect(task: LinearQueueItem): Promise<void> {
-    const ticket = await linearClient.getTicketCached(task.ticketId);
+    // Force a full fetch so the ticket's creator (the developer) is cached before any
+    // cost events are recorded for this run. The fast poll cache omits the creator name.
+    const ticket = await linearClient.getTicketCached(task.ticketId, 0);
     if (!ticket) {
       linearQueue.fail(task.id, 'Ticket not found');
       return;

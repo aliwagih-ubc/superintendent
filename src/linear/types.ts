@@ -28,6 +28,10 @@ export interface TicketInfo {
     id: string;
     name: string;
   } | null;
+  creator: {
+    id: string;
+    name: string;
+  } | null;
   labels: Array<{
     id: string;
     name: string;

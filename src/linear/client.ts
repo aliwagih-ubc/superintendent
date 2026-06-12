@@ -1409,6 +1409,7 @@ export class LinearApiClient {
             name: '', // We don't need the name, just that it's assigned
           }
         : null,
+      creator: null, // Name needs an API fetch; the full fetch (getTicket) fills this in.
       labels,
       createdAt: issue.createdAt,
       updatedAt: issue.updatedAt,
@@ -1424,6 +1425,7 @@ export class LinearApiClient {
   private async mapIssueToTicket(issue: Issue): Promise<TicketInfo> {
     const state = await issue.state;
     const assignee = await issue.assignee;
+    const creator = await issue.creator;
     const labels = await issue.labels();
 
     return {
@@ -1443,6 +1445,12 @@ export class LinearApiClient {
         ? {
             id: assignee.id,
             name: assignee.name,
+          }
+        : null,
+      creator: creator
+        ? {
+            id: creator.id,
+            name: creator.name,
           }
         : null,
       labels: labels.nodes.map((l) => ({ id: l.id, name: l.name })),

@@ -4,8 +4,15 @@ import { costForUsage } from './pricing.js';
 import { insertCostEvent } from './storage.js';
 import type { CostEventInput } from './types.js';
 import { enqueue, isPublishingEnabled } from '../publisher/outbox.js';
+import { linearCache } from '../linear/cache.js';
 
 const logger = createChildLogger({ module: 'cost-recorder' });
+
+/** The ticket's developer: its creator, falling back to assignee, from the cached ticket. */
+function resolveDeveloper(ticketId: string): string | undefined {
+  const ticket = linearCache.getTicket(ticketId);
+  return ticket?.creator?.name || ticket?.assignee?.name || undefined;
+}
 
 export class CostRecorder {
   // Best-effort: a recording failure must never break an agent run.
@@ -24,7 +31,8 @@ export class CostRecorder {
         logger.warn({ model: event.model, agentType: event.agentType }, 'No price for model; recording cost as null');
       }
 
-      const stored = { ...event, costUsd };
+      const developer = event.developer ?? resolveDeveloper(event.ticketId);
+      const stored = { ...event, costUsd, developer };
       insertCostEvent(getDatabase(), stored);
       if (isPublishingEnabled()) {
         enqueue(getDatabase(), 'cost_events', {

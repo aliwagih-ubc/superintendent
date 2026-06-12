@@ -10,7 +10,7 @@ const logger = createChildLogger({ module: 'queue-database' });
 
 let db: Database.Database | null = null;
 
-const SCHEMA_VERSION = 11;
+const SCHEMA_VERSION = 12;
 
 const MIGRATIONS: Record<number, string[]> = {
   1: [
@@ -357,6 +357,13 @@ const MIGRATIONS: Record<number, string[]> = {
       processed_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`,
     `INSERT OR REPLACE INTO schema_version (version) VALUES (11)`,
+  ],
+
+  // Migration 12: cache the ticket creator (the developer) for cost attribution
+  12: [
+    `ALTER TABLE linear_tickets_cache ADD COLUMN creator_id TEXT`,
+    `ALTER TABLE linear_tickets_cache ADD COLUMN creator_name TEXT`,
+    `INSERT OR REPLACE INTO schema_version (version) VALUES (12)`,
   ],
 };
 
