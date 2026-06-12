@@ -14,10 +14,12 @@ Superintendent can publish cost, ticket, session, and heartbeat data to a Supaba
    insert into dashboard_users (email) values ('your@email.com');
    ```
 
-4. Copy your credentials from the project Settings page (API section):
-   - Project URL (starts with `https://`)
-   - Service role key (secret, used by the daemon for writes)
-   - Anon key (public, used by the dashboard for reads)
+4. Copy your credentials from the project Settings page:
+   - Project URL: build it from your Project ID (Settings, General, Project ID) as
+     `https://<PROJECT_ID>.supabase.co`. Use that bare base URL. Do not paste the
+     Data API / REST endpoint (the one with a `/rest/v1` suffix); the client adds that.
+   - Service role key (Settings, API): secret, used by the daemon for writes.
+   - Anon key (Settings, API): public, used by the dashboard for reads.
 
 5. Add the daemon credentials to `.env` in the Superintendent directory:
 
