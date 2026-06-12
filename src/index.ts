@@ -7,6 +7,7 @@ import { initializeAuth, getAuth } from './linear/auth.js';
 import { queueManager, queueProcessor, queueScheduler } from './queue/index.js';
 import { codeExecutorAgent, plannerAgent } from './agents/impl/index.js';
 import { claudeQueue } from './queue/claude-queue.js';
+import { startPublisher, stopPublisher } from './publisher/index.js';
 
 async function checkOAuthAuthorization(): Promise<void> {
   if (config.linear.auth.mode !== 'oauth') {
@@ -105,6 +106,12 @@ async function main() {
     'Configuration loaded'
   );
 
+  // Start the Supabase publisher (no-op if not configured)
+  startPublisher({
+    total: config.agents.maxCodeExecutors,
+    used: () => claudeQueue.getProcessingCount(),
+  });
+
   // Set up heartbeat every 60 seconds
   const heartbeatInterval = setInterval(async () => {
     await stateManager.updateHeartbeat();
@@ -134,6 +141,7 @@ async function main() {
     clearInterval(healthCheckInterval);
 
     // Stop queue processing
+    stopPublisher();
     queueScheduler.stop();
     queueProcessor.stop();
     queueManager.shutdown();

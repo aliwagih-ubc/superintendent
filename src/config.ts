@@ -53,6 +53,10 @@ const ConfigSchema = z.object({
   daemon: z.object({
     pollIntervalSeconds: z.number().int().min(5).default(30),
   }),
+  supabase: z.object({
+    url: z.string().url(),
+    serviceRoleKey: z.string().min(1),
+  }).optional(),
   debug: z.object({
     enabled: z.boolean().default(false),
     cachePromptsDir: z.string().default('.superintendent/cached-prompts'),
@@ -117,6 +121,9 @@ export function loadConfig(): Config {
     daemon: {
       pollIntervalSeconds: parseInt(process.env['DAEMON_POLL_INTERVAL_SECONDS'] || '30', 10),
     },
+    supabase: (process.env['SUPABASE_URL'] && process.env['SUPABASE_SERVICE_ROLE_KEY'])
+      ? { url: process.env['SUPABASE_URL'], serviceRoleKey: process.env['SUPABASE_SERVICE_ROLE_KEY'] }
+      : undefined,
     debug: {
       enabled: process.env['DEBUG_MODE'] === 'true',
       cachePromptsDir: process.env['DEBUG_CACHE_PROMPTS_DIR'] || '.superintendent/cached-prompts',

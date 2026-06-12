@@ -183,6 +183,7 @@ export const CodeExecutorOutputSchema = z.object({
   }).optional(),
   error: z.string().optional(),
   output: z.string(),
+  costUsd: z.number().optional(),
 });
 
 export type CodeExecutorOutput = z.infer<typeof CodeExecutorOutputSchema>;

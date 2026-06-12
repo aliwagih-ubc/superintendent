@@ -137,7 +137,8 @@ export class TicketRefinerAgent extends BaseAgent<TicketRefinerInput, TicketRefi
         REFINER_SYSTEM_PROMPT,
         context,
         REFINER_SCHEMA,
-        { maxTokens: 2048 }
+        { maxTokens: 2048 },
+        { ticketId: input.ticketId, ticketIdentifier: input.ticketIdentifier },
       );
 
       // Filter out questions that have already been answered

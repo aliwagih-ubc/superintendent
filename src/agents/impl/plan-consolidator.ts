@@ -8,6 +8,7 @@ import {
 import { createChildLogger } from '../../utils/logger.js';
 import Anthropic from '@anthropic-ai/sdk';
 import { config } from '../../config.js';
+import { costRecorder } from '../../cost/recorder.js';
 
 const logger = createChildLogger({ module: 'plan-consolidator' });
 
@@ -106,6 +107,20 @@ Format the plan in markdown. Be thorough and specific.`;
         messages: [
           { role: 'user', content: userPrompt },
         ],
+      });
+
+      costRecorder.record({
+        ticketId: input.ticketId,
+        ticketIdentifier: input.ticketIdentifier,
+        agentType: 'plan-consolidator',
+        model: response.model,
+        source: 'sdk',
+        usage: {
+          inputTokens: response.usage.input_tokens,
+          outputTokens: response.usage.output_tokens,
+          cacheReadTokens: response.usage.cache_read_input_tokens ?? undefined,
+          cacheWriteTokens: response.usage.cache_creation_input_tokens ?? undefined,
+        },
       });
 
       const firstContent = response.content[0];

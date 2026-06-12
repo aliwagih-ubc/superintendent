@@ -97,7 +97,8 @@ export class DescriptionConsolidatorAgent extends BaseAgent<DescriptionConsolida
         CONSOLIDATOR_SYSTEM_PROMPT,
         context,
         CONSOLIDATOR_SCHEMA,
-        { maxTokens: 2048 }
+        { maxTokens: 2048 },
+        { ticketId: input.ticketId, ticketIdentifier: input.ticketIdentifier },
       );
 
       logger.info(

@@ -2,6 +2,7 @@ import { spawn, ChildProcess, execSync } from 'node:child_process';
 import fs from 'node:fs';
 import { config } from '../../config.js';
 import { createChildLogger } from '../../utils/logger.js';
+import { costRecorder } from '../../cost/recorder.js';
 
 // Find the claude binary path at startup
 function findClaudePath(): string {
@@ -45,6 +46,11 @@ export interface ExecutionContext {
   onSessionIdCaptured?: (sessionId: string) => void;
 }
 
+export function extractCostUsd(parsed: Record<string, unknown>): number | undefined {
+  const v = parsed['total_cost_usd'];
+  return typeof v === 'number' ? v : undefined;
+}
+
 export class CodeExecutorAgent implements Agent<CodeExecutorInput, CodeExecutorOutput> {
   readonly config: AgentConfig = {
     type: 'code-executor',
@@ -83,6 +89,17 @@ export class CodeExecutorAgent implements Agent<CodeExecutorInput, CodeExecutorO
     try {
       const result = await this.runClaudeCode(ticketIdentifier, prompt, worktreePath, context);
       const durationMs = Date.now() - startTime;
+
+      if (result.costUsd !== undefined) {
+        costRecorder.record({
+          ticketId: input.ticketId,
+          ticketIdentifier: input.ticketIdentifier,
+          agentType: 'code-executor',
+          model: 'claude-code',
+          source: 'claude_code',
+          costUsd: result.costUsd,
+        });
+      }
 
       return {
         success: result.success,
@@ -375,6 +392,7 @@ export class CodeExecutorAgent implements Agent<CodeExecutorInput, CodeExecutorO
       filesModified: [],
       error: errorMsg || (isError ? 'Task failed' : undefined),
       output: rawOutput,
+      costUsd: extractCostUsd(parsed),
     };
   }
 

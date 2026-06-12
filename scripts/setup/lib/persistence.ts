@@ -56,6 +56,8 @@ export function writeEnvFileAtomic(cwd: string, state: SetupState): void {
     'AGENTS_TIMEOUT_MINUTES',
     'AGENTS_MAX_RETRIES',
     'DAEMON_POLL_INTERVAL_SECONDS',
+    'SUPABASE_URL',
+    'SUPABASE_SERVICE_ROLE_KEY',
   ];
 
   for (const key of order) {

@@ -5,12 +5,13 @@ import { LinearStep } from './steps/LinearStep.js';
 import { AnthropicStep } from './steps/AnthropicStep.js';
 import { RepoStep } from './steps/RepoStep.js';
 import { AgentSettingsStep } from './steps/AgentSettingsStep.js';
+import { SupabaseStep } from './steps/SupabaseStep.js';
 import { PreflightStep } from './steps/PreflightStep.js';
 import { CompleteStep } from './steps/CompleteStep.js';
 import { loadProgress, saveProgress } from './lib/persistence.js';
 import { type SetupState, type StepId } from './lib/schema.js';
 
-const ORDER: StepId[] = ['welcome', 'linear', 'anthropic', 'repo', 'agentSettings', 'preflight', 'complete'];
+const ORDER: StepId[] = ['welcome', 'linear', 'anthropic', 'repo', 'agentSettings', 'supabase', 'preflight', 'complete'];
 
 type Props = { cwd: string; onComplete?: (action: 'dev' | 'doctor') => void };
 
@@ -63,8 +64,9 @@ export function App({ cwd, onComplete }: Props) {
       {stepIndex === 2 && <AnthropicStep {...stepProps} />}
       {stepIndex === 3 && <RepoStep {...stepProps} />}
       {stepIndex === 4 && <AgentSettingsStep {...stepProps} />}
-      {stepIndex === 5 && <PreflightStep {...stepProps} cwd={cwd} />}
-      {stepIndex === 6 && <CompleteStep state={state} onAction={onComplete} />}
+      {stepIndex === 5 && <SupabaseStep {...stepProps} />}
+      {stepIndex === 6 && <PreflightStep {...stepProps} cwd={cwd} />}
+      {stepIndex === 7 && <CompleteStep state={state} onAction={onComplete} />}
     </Box>
   );
 }

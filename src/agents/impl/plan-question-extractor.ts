@@ -117,7 +117,8 @@ export class PlanQuestionExtractorAgent extends BaseAgent<PlanQuestionExtractorI
         EXTRACTOR_SYSTEM_PROMPT,
         context,
         EXTRACTOR_SCHEMA,
-        { maxTokens: 4096 } // Allow longer output for plan content
+        { maxTokens: 4096 },
+        { ticketId: input.ticketId, ticketIdentifier: input.ticketIdentifier },
       );
 
       logger.info(
