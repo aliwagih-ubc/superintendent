@@ -39,3 +39,26 @@ export function costByTicket(db: Database.Database): Array<{ ticketId: string; c
      FROM cost_events GROUP BY ticket_id ORDER BY costUsd DESC`,
   ).all() as Array<{ ticketId: string; costUsd: number }>;
 }
+
+export interface TicketCostSummary {
+  costUsd: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  eventCount: number;
+}
+
+export function costSummaryForTicket(db: Database.Database, ticketId: string): TicketCostSummary {
+  const row = db.prepare(
+    `SELECT
+       COALESCE(SUM(cost_usd), 0)            AS costUsd,
+       COALESCE(SUM(input_tokens), 0)        AS inputTokens,
+       COALESCE(SUM(output_tokens), 0)       AS outputTokens,
+       COALESCE(SUM(cache_read_tokens), 0)   AS cacheReadTokens,
+       COALESCE(SUM(cache_write_tokens), 0)  AS cacheWriteTokens,
+       COUNT(*)                              AS eventCount
+     FROM cost_events WHERE ticket_id = ?`,
+  ).get(ticketId) as TicketCostSummary;
+  return row;
+}
