@@ -39,6 +39,7 @@ const ConfigSchema = z.object({
   agents: z.object({
     maxConcurrent: z.number().int().min(1).max(20).default(5),
     maxCodeExecutors: z.number().int().min(0).max(10).default(2), // 0 = Linear analysis only, no Claude Code execution
+    codingProvider: z.enum(['claude-code', 'gemini', 'codex']).default('claude-code'),
     workDir: z.string().min(1, 'AGENTS_WORK_DIR is required'),
     timeoutMinutes: z.number().int().min(1).default(60),
     maxRetries: z.number().int().min(0).default(2),
@@ -108,6 +109,7 @@ export function loadConfig(): Config {
     agents: {
       maxConcurrent: parseInt(process.env['AGENTS_MAX_CONCURRENT'] || '5', 10),
       maxCodeExecutors: parseInt(process.env['AGENTS_MAX_CODE_EXECUTORS'] || '2', 10),
+      codingProvider: process.env['CODING_PROVIDER'] || 'claude-code',
       workDir: process.env['AGENTS_WORK_DIR'] ?? '',
       timeoutMinutes: parseInt(process.env['AGENTS_TIMEOUT_MINUTES'] || '60', 10),
       maxRetries: parseInt(process.env['AGENTS_MAX_RETRIES'] || '2', 10),

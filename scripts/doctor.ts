@@ -1,5 +1,6 @@
 #!/usr/bin/env tsx
 import { readFileSync, existsSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 import { join } from 'node:path';
 import { runAllChecks } from './setup/lib/validate.js';
 import { defaultSetupState } from './setup/lib/schema.js';
@@ -54,6 +55,17 @@ async function main() {
   } else {
     console.log('  \x1b[2mi\x1b[0m Dashboard publisher disabled (local-only mode)');
   }
+
+  const provider = env['CODING_PROVIDER'] || 'claude-code';
+  const cliName = provider === 'claude-code' ? 'claude' : provider;
+  let cliFound = false;
+  try {
+    execSync(`which ${cliName}`, { stdio: 'ignore' });
+    cliFound = true;
+  } catch {
+    cliFound = false;
+  }
+  console.log(`  \x1b[36mi\x1b[0m Coding provider: ${provider} (CLI '${cliName}' ${cliFound ? 'found' : 'NOT found on PATH'})`);
 
   const allOk = checks.linear.ok && checks.anthropic.ok && checks.repo.ok;
   console.log('');
